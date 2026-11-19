@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>エンジェル税制 効果の計算</title>
+
+<style>
+*{box-sizing:border-box}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}
+/* 上に4つの入力、真ん中に答え1文、下に3つのカード。細かい物は畳む */
+:root{--bg:#f4f5f2;--card:#ffffff;--fg:#1c2220;--muted:#646c68;--line:#dde0db;--accent:#1d6b52;--soft:#e4f1eb;--sans:"Noto Sans JP","Hiragino Sans",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141816;--card:#1c211f;--fg:#e9ece9;--muted:#a3aba7;--line:#2e3532;--accent:#6cc9a5;--soft:#1f3a30;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141816;--card:#1c211f;--fg:#e9ece9;--muted:#a3aba7;--line:#2e3532;--accent:#6cc9a5;--soft:#1f3a30;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.7}
+.wrap{max-width:980px;margin:0 auto;padding-block:28px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
+h1{font-size:1.5rem;margin:0;text-wrap:balance}
+.guide{margin:-8px 0 0;color:var(--muted);font-size:.9rem}
+.inputs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+label{display:flex;flex-direction:column;gap:4px;font-size:.88rem;font-weight:600}
+.hint{font-weight:400;font-size:.76rem;color:var(--muted);line-height:1.45;min-height:2.2em}
+.u{display:flex;margin-top:auto;align-items:center;gap:6px;font-weight:400;color:var(--muted)}
+input{width:100%;min-width:0;font:inherit;font-size:1.25rem;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg);text-align:right;font-variant-numeric:tabular-nums}
+select{width:100%;font:inherit;font-size:1rem;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg)}
+input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+details.more{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:.88rem}
+details summary{cursor:pointer;color:var(--accent);font-weight:600}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px 14px;margin-top:10px}
+.mgrid input{font-size:1rem}
+.chk{flex-direction:row;align-items:center;gap:8px;font-weight:400}.chk input{width:auto}
+.answer{background:var(--soft);border-radius:10px;padding:18px 20px;font-size:1.25rem;font-weight:700;text-wrap:balance}
+.answer b{color:var(--accent);font-size:1.6rem;font-variant-numeric:tabular-nums}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card.best{border:2px solid var(--accent)}
+.card h2{margin:0;font-size:1.05rem}
+.sub{font-size:.8rem;color:var(--muted);margin-top:-8px}
+.big{font-size:2.2rem;font-weight:700;color:var(--accent);line-height:1.1;font-variant-numeric:tabular-nums}
+.big small{font-size:1rem}
+.lab{font-size:.85rem;color:var(--muted)}
+.line{display:flex;justify-content:space-between;gap:8px;font-size:.92rem;border-top:1px solid var(--line);padding-top:8px}
+.line b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.keep b{color:var(--accent);font-size:1.1rem}
+.na{color:var(--muted);font-size:.95rem}
+.formula{font-size:.82rem;line-height:1.9;font-variant-numeric:tabular-nums;margin-top:6px}
+.notes{font-size:.78rem;color:var(--muted)}
+@media (max-width:760px){.inputs{grid-template-columns:repeat(2,minmax(0,1fr))}.cards{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<h1>エンジェル税制　どれを使うと、いくら得か</h1>
+<p class="guide">上の4つを入れるだけで出ます。手元に源泉徴収票か確定申告書があれば、その数字を入れてください。扶養や保険をきっちり入れたい時だけ「控除を足す」を開きます。</p>
+<div class="inputs">
+<label for="kyuyo">給与の年収<small class="hint">源泉徴収票の「支払金額」。会社員・勤務医・役員報酬の経営者</small><span class="u"><input id="kyuyo" type="number" inputmode="decimal" value="3000" min="0">万円</span></label>
+<label for="jigyo">事業所得<small class="hint">確定申告の「事業所得」＝売上−経費−青色申告の控除。個人事業主・開業医</small><span class="u"><input id="jigyo" type="number" inputmode="decimal" value="0" min="0">万円</span></label>
+<label for="kabueki">今年の株の売却益<small class="hint">株を売って出た利益（損を差し引いた後）。無ければ0</small><span class="u"><input id="kabueki" type="number" inputmode="decimal" value="0" min="0">万円</span></label>
+<label for="shusshi">出資する額<small class="hint">エトワールに払い込む額</small><span class="u"><input id="shusshi" type="number" inputmode="decimal" value="800" min="0">万円</span></label>
+</div>
+<details class="more"><summary>控除を足す（扶養・保険など）　<span id="dedTotal"></span></summary>
+<div class="mgrid">
+<label for="sonota">その他の所得<small class="hint">家賃の所得（不動産所得）・年金・副業・暗号資産の利益など。FX は入れない</small><span class="u"><input id="sonota" type="number" inputmode="decimal" value="0" min="0">万円</span></label>
+<label for="haiguKind">配偶者控除<span class="u"><select id="haiguKind"><option value="none">なし</option><option value="ippan">あり（69歳まで）</option><option value="old">あり（70歳以上）</option></select></span></label>
+<label for="f16">扶養 16〜18歳・23〜69歳<span class="u"><input id="f16" type="number" inputmode="numeric" value="0" min="0">人</span></label>
+<label for="f19">扶養 19〜22歳<span class="u"><input id="f19" type="number" inputmode="numeric" value="0" min="0">人</span></label>
+<label for="f70">扶養 70歳以上（別居）<span class="u"><input id="f70" type="number" inputmode="numeric" value="0" min="0">人</span></label>
+<label for="f70d">扶養 70歳以上の親（同居）<span class="u"><input id="f70d" type="number" inputmode="numeric" value="0" min="0">人</span></label>
+<label class="chk" for="kodomo23"><input id="kodomo23" type="checkbox">23歳未満の子ども等がいる（16歳未満も含む）</label>
+<label for="seiho">生命保険料控除<small class="hint">年末調整か申告書の額。上限12万円</small><span class="u"><input id="seiho" type="number" inputmode="decimal" value="0" min="0">万円</span></label>
+<label for="ideco">iDeCo・小規模企業共済<small class="hint">1年に払った額の全部</small><span class="u"><input id="ideco" type="number" inputmode="decimal" value="0" min="0">万円</span></label>
+<label for="other">その他の控除<small class="hint">医療費控除・寄附金控除（ふるさと納税は寄附額−2,000円）など</small><span class="u"><input id="other" type="number" inputmode="decimal" value="0" min="0">万円</span></label>
+<label for="shahoOwn">社会保険料（分かる時）<small class="hint">源泉徴収票の「社会保険料等の金額」。空なら目安で計算</small><span class="u"><input id="shahoOwn" type="number" inputmode="decimal" placeholder="目安" min="0">万円</span></label>
+<label class="chk" for="age40"><input id="age40" type="checkbox" checked>40〜64歳</label>
+</div></details>
+
+<div class="answer" id="answer"></div>
+<div class="cards" id="cards"></div>
+
+<p class="notes">住民税は、どの形でも変わりません（国の制度で減るのは所得税だけ）。所得税は復興特別所得税を含みます。2026年（令和8年分）の表で計算します＝給与所得控除・基礎控除（合計所得655万円超の段は令和8年分の62万円。655万円以下の段は国税庁のページから令和8年分の値を読み切れず、令和7年分の値）・配偶者控除・扶養控除（16歳未満は0円）・所得金額調整控除（給与850万円超で23歳未満の子ども等がいる時、最大15万円）。社会保険料は目安です。どの形が使えるかは、払込みの日の会社の条件と、出資する人の条件で決まります。ご自身の額は税理士にご確認ください。出典＝国税庁 タックスアンサー No.1544・No.2260・No.1410・No.1199・No.1191・No.1180・No.1411、東京都「エンジェル税制のご案内 税優遇の内容」、経済産業省「エンジェル税制」、中小企業庁 エンジェル税制パンフレット。</p>
+</div>
+<script>
+
+// エンジェル税制 効果の計算（単位＝円）
+function kyuyoKoujo(s){ if(s<=0) return 0; if(s<=2200000) return Math.min(s,740000); if(s<=3600000) return s*0.3+80000; if(s<=6600000) return s*0.2+440000; if(s<=8500000) return s*0.1+1100000; return 1950000; }
+function shotokuzei(k){ k=Math.floor(Math.max(0,k)/1000)*1000; const t=[[1950000,.05,0],[3300000,.10,97500],[6950000,.20,427500],[9000000,.23,636000],[18000000,.33,1536000],[40000000,.40,2796000],[Infinity,.45,4796000]]; for(const [u,r,d] of t){ if(k<=u) return Math.max(0,k*r-d);} }
+function calc(i){
+  const kyuyoShotoku=Math.max(0,i.kyuyo-kyuyoKoujo(i.kyuyo)-(i.chosei||0));
+  const sou=kyuyoShotoku+Math.max(0,i.jigyo)+Math.max(0,i.sonota);
+  const kazei=Math.max(0,sou-i.koujo);
+  const kazeiJ=Math.max(0,kazei+(i.kisoS||0)-(i.kisoJ||0));
+  const F=1.021, KS=0.15315, KJ=0.05;
+  const zeiS=shotokuzei(kazei)*F, zeiJ=kazeiJ*0.10;
+  const kabuS=i.kabueki*KS, kabuJ=i.kabueki*KJ;
+  const before=zeiS+zeiJ+kabuS+kabuJ;
+  const jogenA=Math.min(8000000,sou*0.4);
+  const dedA=Math.max(0,Math.min(i.shusshi-2000,jogenA));
+  const zeiSA=shotokuzei(kazei-dedA)*F;
+  const genA=zeiS-zeiSA;
+  const dedB=Math.max(0,Math.min(i.shusshi,i.kabueki));
+  const genB=dedB*KS;
+  const mk=(ded,gen,later,sA,kS)=>({ded,gen,later,net:gen-later,
+     before,after:before-gen,sBefore:zeiS,sAfter:sA,kBefore:kabuS,kAfter:kS,jBefore:zeiJ+kabuJ});
+  return {kyuyoShotoku,sou,kazei,kazeiJ,zeiS,zeiJ,jogenA,
+    A:mk(dedA,genA,dedA*KS,zeiSA,kabuS),
+    B:mk(dedB,genB,dedB*KS,zeiS,kabuS-genB),
+    P:mk(dedB,genB,0,zeiS,kabuS-genB)};
+}
+
+
+
+function kisoKoujo(g){ if(g<=1320000) return 950000; if(g<=3360000) return 880000; if(g<=4890000) return 680000; if(g<=6550000) return 630000; if(g<=23500000) return 620000; if(g<=24000000) return 480000; if(g<=24500000) return 320000; if(g<=25000000) return 160000; return 0; }
+function shahoMeyasu(kyuyo,jigyo,age40){
+  let t=0;
+  if(kyuyo>0){ const m=kyuyo/12; t+=Math.min(m,1390000)*12*(0.05+(age40?0.008:0)); t+=Math.min(m,650000)*12*0.0915; t+=kyuyo*0.0055; }
+  if(jigyo>0){ t+=Math.min(Math.max(0,jigyo-430000)*(0.10+(age40?0.02:0)), age40?1090000:920000); t+=17510*12; }
+  return t; }
+
+function choseiKoujo(kyuyo,has){ return has&&kyuyo>8500000?Math.ceil((Math.min(kyuyo,10000000)-8500000)*0.1):0; }
+function haiguKoujo(g,kind){ if(kind==='none'||g>10000000) return 0; const old=kind==='old'; if(g<=9000000) return old?480000:380000; if(g<=9500000) return old?320000:260000; return old?160000:130000; }
+
+
+const ids=["kyuyo","jigyo","sonota","kabueki","shusshi","f16","f19","f70","f70d","seiho","ideco","other","shahoOwn"];
+const man=v=>(Math.round(v/1000)/10).toLocaleString("ja-JP",{maximumFractionDigits:1});
+function run(){
+  const i={};ids.forEach(k=>{const v=parseFloat(document.getElementById(k).value);i[k]=(isFinite(v)&&v>0?v:0)*10000;});
+  const age40=document.getElementById("age40").checked;
+  i.chosei=choseiKoujo(i.kyuyo,document.getElementById("kodomo23").checked);
+  const g=Math.max(0,i.kyuyo-kyuyoKoujo(i.kyuyo)-i.chosei)+i.jigyo+i.sonota+i.kabueki;
+  const kiso=kisoKoujo(g), shahoA=shahoMeyasu(i.kyuyo,i.jigyo,age40);
+  const shaho=document.getElementById("shahoOwn").value.trim()!==""?i.shahoOwn:shahoA;
+  const haigu=haiguKoujo(g,document.getElementById("haiguKind").value);
+  const fuyo=(i.f16*38+i.f19*63+i.f70*48+i.f70d*58)/10000*10000;
+  i.kisoS=kiso; i.kisoJ=g<=24000000?430000:(g<=24500000?290000:(g<=25000000?150000:0));
+  i.koujo=kiso+shaho+haigu+fuyo+Math.min(i.seiho,120000)+i.ideco+i.other;
+  document.getElementById("dedTotal").textContent="控除の合計 "+man(i.koujo)+"万円（基礎控除"+man(kiso)+"・社会保険料"+man(shaho)+(haigu?"・配偶者"+man(haigu):"")+(fuyo?"・扶養"+man(fuyo):"")+"を含む）"+(i.chosei?"／所得金額調整控除 "+man(i.chosei)+"万円":"");
+  const r=calc(i);
+  const L=[["A","優遇措置A","給与や事業の所得から引く",r.A],["P","プレシード特例","株の売却益から引く・売る時も非課税",r.P],["B","優遇措置B","株の売却益から引く・税の先送り",r.B]];
+  const ok=L.filter(([k,,,v])=>v.ded>0&&(k==="A"||i.kabueki>0));
+  const best=ok.length?ok.reduce((a,b)=>b[3].net>a[3].net?b:a):null;
+  document.getElementById("answer").innerHTML=best?`一番得なのは${best[1]}です。出資した${man(i.shusshi)}万円が戻った時、手元に <b>${man(best[3].net)}万円</b> の得が残ります`:"年収か出資する額を入れてください";
+  document.getElementById("cards").innerHTML=L.map(([k,name,sub,v])=>{
+    const off=v.ded<=0||(k!=="A"&&i.kabueki<=0);
+    if(off) return `<div class="card"><h2>${name}</h2><div class="sub">${sub}</div><div class="na">${k==="A"?"年収か出資する額を入れてください":"今年の株の売却益が無いと使えません"}</div></div>`;
+    const jum=`<br><br>住民税（出資しても変わりません）<br>今年の住民税の目安＝住民税の課税所得 ${man(r.kazeiJ)}万円 × 10%＝${man(r.zeiJ)}万円${i.kabueki>0?`<br>株の売却益の住民税＝${man(i.kabueki)}万円 × 5%＝${man(i.kabueki*0.05)}万円`:""}<br>住民税の課税所得＝所得税の課税所得 ${man(r.kazei)}万円＋基礎控除の差（所得税${man(i.kisoS)}万円−住民税${man(i.kisoJ)}万円）<br>出資した人が株を売る時の住民税＝出資額で売れた時は0円（住民税では株の取得の額が下がらないため。出資額を超えて売れた分だけに5%）`;
+    const f0=k==="A"?`引ける額＝出資額−2,000円（上限 ${man(r.jogenA)}万円＝800万円と総所得×40%の小さい方）→ ${man(v.ded)}万円<br>所得税　${man(v.sBefore)}万円 → ${man(v.sAfter)}万円<br>あとでかかる税＝${man(v.ded)}万円 × 15.315%`
+      :`引ける額＝出資額と株の売却益の小さい方 → ${man(v.ded)}万円<br>減る所得税＝${man(v.ded)}万円 × 15.315%<br>あとでかかる税＝${k==="B"?man(v.ded)+"万円 × 15.315%":"0円（20億円まで非課税）"}`;
+    const f=f0+jum;
+    return `<div class="card${best&&best[0]===k?" best":""}"><h2>${name}</h2><div class="sub">${sub}</div>
+      <div><div class="lab">出資した${man(i.shusshi)}万円が戻った時に、手元に残る得</div><div class="big">${man(v.net)}<small>万円</small></div></div>
+      <div class="line"><span>1. 出資する</span><b>−${man(i.shusshi)}万円</b></div>
+      <div class="line"><span>2. 翌年の確定申告で、所得税が減る</span><b>＋${man(v.gen)}万円</b></div>
+      <div class="line"><span>3. 出資した人が株を売り、${man(i.shusshi)}万円が戻る</span><b>＋${man(i.shusshi)}万円</b></div>
+      <div class="line"><span>4. 株を売る時にかかる所得税</span><b>−${man(v.later)}万円</b></div>
+      <div class="line keep"><span>手元に残る得（1〜4の合計）</span><b>＋${man(v.net)}万円</b></div>
+      <details><summary>式を見る</summary><div class="formula">${f}</div></details></div>`;}).join("");
+}
+ids.forEach(k=>document.getElementById(k).addEventListener("input",run));["age40","kodomo23","haiguKind"].forEach(k=>document.getElementById(k).addEventListener("change",run));run();
+</script>
+</body>
+</html>
